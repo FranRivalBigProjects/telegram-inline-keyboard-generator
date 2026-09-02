@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Telegram Inline Keyboard Generator</title>
+<meta name="description" content="Build a Telegram inline keyboard visually and generate the reply_markup JSON for your bot.">
+<meta name="google-site-verification" content="REPLACE_WITH_YOUR_VERIFICATION_CODE">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0d0f12;color:#d7dbe0;font-family:'JetBrains Mono',monospace;line-height:1.6;padding:24px 16px 60px}
+.wrap{max-width:760px;margin:0 auto}
+h1{font-size:22px;color:#7ee787;margin-bottom:6px}
+.subtitle{color:#8b949e;font-size:14px;margin-bottom:24px}
+.panel{background:#14171a;border:1px solid #2a2f36;border-radius:6px;padding:18px;margin-bottom:20px}
+.panel h2{font-size:15px;color:#58a6ff;margin-bottom:12px}
+label{display:block;font-size:12px;color:#8b949e;margin:10px 0 4px}
+input[type=text],select{width:100%;background:#0a0c0e;border:1px solid #2a2f36;border-radius:4px;color:#d7dbe0;font-family:'JetBrains Mono',monospace;font-size:13px;padding:10px}
+.row-3{display:grid;grid-template-columns:1fr;gap:8px}
+@media(min-width:560px){.row-3{grid-template-columns:1fr 1fr 1fr}}
+.row-item{border:1px solid #2a2f36;border-radius:4px;padding:8px}
+.btn{background:#238636;color:#fff;border:none;border-radius:4px;padding:10px 16px;font-family:'JetBrains Mono',monospace;font-size:13px;cursor:pointer;margin-right:8px;margin-top:12px}
+.btn.secondary{background:#21262d;border:1px solid #2a2f36}
+.output{background:#0a0c0e;border:1px solid #2a2f36;border-radius:4px;padding:14px;font-size:12px;color:#d7dbe0;white-space:pre-wrap;word-break:break-word;margin-top:12px}
+.preview-btn{display:inline-block;background:#527da3;color:#fff;padding:8px 10px;border-radius:6px;font-size:12px;margin:3px;text-align:center}
+.preview-row{display:flex;flex-wrap:wrap}
+article{font-size:13px;color:#a9b1bb;margin-top:26px}
+article h2{font-size:15px;color:#58a6ff;margin:16px 0 8px}
+article p{margin-bottom:8px}
+footer{text-align:center;font-size:11px;color:#4a5158;margin-top:34px}
+</style></head>
+<body><div class="wrap">
+<h1>Telegram Inline Keyboard Generator</h1>
+<p class="subtitle">Add buttons, arrange them into rows, and get the reply_markup JSON.</p>
+<div class="panel">
+<h2>Buttons (add up to 6)</h2>
+<div class="row-3" id="buttonsForm"></div>
+<button class="btn" id="generateBtn">Generate</button>
+<button class="btn secondary" id="copyBtn">Copy JSON</button>
+</div>
+<div class="panel">
+<h2>Preview</h2>
+<div class="preview-row" id="previewRow"></div>
+</div>
+<div class="panel"><h2>JSON Output</h2><div class="output" id="output"></div></div>
+<article><h2>Callback Data vs URL Buttons</h2><p>Buttons with callback_data trigger a CallbackQuery your bot handles in code, while url buttons simply open a link. Rows are defined by grouping buttons together; each row here corresponds to one line of buttons in the keyboard.</p></article>
+<footer>Client-side tool. Nothing you enter here is stored or sent anywhere.</footer>
+</div>
+<script>
+function buildForm(){
+  var html='';
+  var i;
+  for(i=1;i<=6;i++){
+    html+='<div class="row-item">';
+    html+='<label>Button '+i+' text</label><input type="text" class="btnText" data-i="'+i+'">';
+    html+='<label>Type</label><select class="btnType" data-i="'+i+'"><option value="callback_data">callback_data</option><option value="url">url</option></select>';
+    html+='<label>Value</label><input type="text" class="btnValue" data-i="'+i+'" placeholder="data or URL">';
+    html+='<label>Row number</label><input type="text" class="btnRow" data-i="'+i+'" value="'+Math.ceil(i/2)+'">';
+    html+='</div>';
+  }
+  document.getElementById('buttonsForm').innerHTML=html;
+}
+function generate(){
+  var texts=document.getElementsByClassName('btnText');
+  var types=document.getElementsByClassName('btnType');
+  var values=document.getElementsByClassName('btnValue');
+  var rows=document.getElementsByClassName('btnRow');
+  var rowMap={};
+  var i;
+  for(i=0;i<texts.length;i++){
+    var text=texts[i].value.trim();
+    if(!text) continue;
+    var rowNum=parseInt(rows[i].value,10)||1;
+    var btn={ text: text };
+    if(types[i].value==='url'){ btn.url=values[i].value.trim()||'https://example.com'; }
+    else { btn.callback_data=values[i].value.trim()||text.toLowerCase(); }
+    if(!rowMap[rowNum]) rowMap[rowNum]=[];
+    rowMap[rowNum].push(btn);
+  }
+  var keyboard=[];
+  var rowKeys=Object.keys(rowMap).sort(function(a,b){return a-b;});
+  for(i=0;i<rowKeys.length;i++){ keyboard.push(rowMap[rowKeys[i]]); }
+  var markup={ inline_keyboard: keyboard };
+  document.getElementById('output').innerHTML=JSON.stringify(markup,null,2);
+
+  var previewHtml='';
+  var r;
+  for(r=0;r<keyboard.length;r++){
+    for(var c=0;c<keyboard[r].length;c++){
+      previewHtml+='<span class="preview-btn">'+keyboard[r][c].text+'</span>';
+    }
+    previewHtml+='<br>';
+  }
+  document.getElementById('previewRow').innerHTML=previewHtml||'Add at least one button.';
+}
+function copyOutput(){
+  var text=document.getElementById('output').innerText||document.getElementById('output').textContent;
+  if(navigator.clipboard){ navigator.clipboard.writeText(text); }
+}
+buildForm();
+document.getElementById('generateBtn').addEventListener('click',generate);
+document.getElementById('copyBtn').addEventListener('click',copyOutput);
+</script>
+</body></html>
